@@ -1,5 +1,7 @@
 const {User} = require("../models/User");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const {JWT} = require("../config/config");
 
 /* 
     Status codes:
@@ -74,7 +76,39 @@ const usersControl = {
             return res.status(500).json({code: 500, message: "Internal Server Error"});
         }
 
-    }
+    },
+
+    login: async (req, res) => {
+        // Get user from request
+        const {userName, password} = req.body;
+
+        // Check if fields are complete
+        if(!userName || !password){
+            return res.status(400).json({code: 400, message: "Fields missing"});
+        }
+
+        // Get user by userName
+        try{
+            const user = await User.findOne({userName});
+            
+            if(!user){
+                return res.status(404).json({code: 404, message: "User not found"});
+            }
+
+            // Check if password is correct
+            const isMatch = await bcrypt.compare(password, user.password);
+            if(!isMatch){
+                return res.status(401).json({code: 401, message: "Password incorrect"});
+            }
+
+            // Return token
+            const token = jwt.sign({_id: user._id, name: user.name}, JWT.SECRET);
+            return res.status(200).header("Authorization", token).json({code: 200, message: "Logged in"});
+        } catch (error) {
+            console.log(error);
+            return res.status(500).json({code: 500, message: "Internal Server Error"});
+        }
+    },
 };
 
 module.exports = usersControl;
