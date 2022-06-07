@@ -8,8 +8,8 @@ const auth = (req, res, next) => {
         return res.status(401).json({code: 401, message: "No token provided"});
     }
     try{
-        const decoded = jwt.verify(token, JWT.SECRET);
-        console.log(decoded);
+        const decodedToken = jwt.verify(token, JWT.SECRET);
+        req.user = decodedToken;
         next();
     } catch (error) {
         return res.status(401).json({code: 401, message: "Unauthorized"});
