@@ -4,6 +4,6 @@ const connect = require("./config/connect");
 
 
 app.listen(PORT, async () => {
-    await connect();
+    connect();
     console.log(`Server is running on port ${PORT}`);
 });
