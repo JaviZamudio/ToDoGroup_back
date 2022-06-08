@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { JWT } = require("../config/config");
 const { default: mongoose } = require("mongoose");
+const { Group } = require("../Models/Group");
 
 /* 
     Status codes:
@@ -135,6 +136,53 @@ const usersControl = {
             console.log(error);
             return res.status(500).json({ code: 500, message: "Internal Server Error" });
         }
+    },
+
+    joinGroup: async (req, res) => {
+        // Get userId
+        const userId = req.user._id;
+
+        // Get groupId
+        const { groupId } = req.body;
+
+        // Check if there is group id
+        if (!groupId) {
+            return res.status(400).json({ code: 1, message: "Fields missing" });
+        }
+
+        // Check if group id is valid
+        if (!mongoose.isValidObjectId(groupId)) {
+            return res.status(400).json({ code: 2, message: "Id is not valid" });
+        }
+
+        User.findById(userId)
+            .then(user => {
+                // Check if user is already in group
+                if (user.groups.includes(groupId)) {
+                    return res.status(400).json({ code: 7, message: "User already in group" });
+                }
+
+                // Add group to user
+                user.groups.push(groupId);
+                user.save();
+
+                // Add user to group
+                Group.findById(groupId)
+                    .then(group => {
+                        group.users.push(userId);
+                        group.save();
+
+                        return res.status(200).json({ code: 200, message: "User added to group" });
+                    })
+                    .catch(error => {
+                        return res.status(500).json({ code: 500, message: "Internal Server Error" });
+                    });
+
+            })
+            .catch(error => {
+                console.log(error);
+                return res.status(500).json({ code: 500, message: "Internal Server Error" });
+            });
     },
 
     // PUT
