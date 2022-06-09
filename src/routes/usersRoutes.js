@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { getAllUsers, register, login, updateUser, getUser, getUserById, deleteUser } = require('../controllers/usersControl');
+const { getAllUsers, register, login, updateUser, getUser, getUserById, deleteUser, joinGroup } = require('../controllers/usersControl');
 const { auth } = require('../middleware/auth');
 
 router.get("/", auth, getUser);
@@ -8,9 +8,10 @@ router.get("/userById", getUserById);
 
 router.post("/register", register);
 router.post("/login", login);
+router.post("/joinGroup", auth, joinGroup);
 
-router.put("/update", auth, updateUser);
+router.put("/", auth, updateUser);
 
-router.delete("/delete", auth, deleteUser);
+router.delete("/", auth, deleteUser);
 
 module.exports = router;

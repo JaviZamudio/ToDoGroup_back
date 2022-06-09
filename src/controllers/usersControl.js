@@ -131,7 +131,7 @@ const usersControl = {
 
             // Return token
             const token = jwt.sign({ _id: user._id, name: user.name }, JWT.SECRET);
-            return res.status(200).header("Authorization", token).json({ code: 200, message: "Logged in" });
+            return res.status(200).json({ code: 200, message: "Logged in", data: { token, user } });
         } catch (error) {
             console.log(error);
             return res.status(500).json({ code: 500, message: "Internal Server Error" });
@@ -139,6 +139,51 @@ const usersControl = {
     },
 
     joinGroup: async (req, res) => {
+        // Get userId
+        const userId = req.user._id;
+
+        // Get inviteCode
+        const { inviteCode } = req.body;
+
+        // Check if there is group id
+        if (!inviteCode) {
+            return res.status(400).json({ code: 1, message: "Fields missing" });
+        }
+
+        // Get group
+        Group.findOne({ inviteCode })
+            .then(group => {
+                // Check if group exists
+                if (!group) {
+                    return res.status(404).json({ code: 404, message: "Group not found" });
+                }
+
+                // Check if user is already in group
+                if (group.members.includes(userId)) {
+                    return res.status(400).json({ code: 4, message: "User already in group" });
+                }
+
+                // Add user to group
+                group.members.push(userId);
+                group.save();
+
+                // add group to user
+                User.findByIdAndUpdate(userId, { $push: { groups: group._id } })
+                    .then(user => {
+                        return res.status(200).json({ code: 200, message: "User added to group"});
+                    })
+                    .catch(error => {
+                        console.log(error);
+                        return res.status(500).json({ code: 500, message: "Internal Server Error" });
+                    });
+            })
+            .catch(error => {
+                console.log(error);
+                return res.status(500).json({ code: 500, message: "Internal Server Error" });
+            });
+    },
+
+    leaveGroup: async (req, res) => {
         // Get userId
         const userId = req.user._id;
 
@@ -150,72 +195,64 @@ const usersControl = {
             return res.status(400).json({ code: 1, message: "Fields missing" });
         }
 
-        // Check if group id is valid
+        // validate group id
         if (!mongoose.isValidObjectId(groupId)) {
             return res.status(400).json({ code: 2, message: "Id is not valid" });
         }
 
+        // Get user
         User.findById(userId)
             .then(user => {
-                // Check if user is already in group
-                if (user.groups.includes(groupId)) {
-                    return res.status(400).json({ code: 7, message: "User already in group" });
+                // Check if user is in group
+                if (!user.groups.includes(groupId)) {
+                    return res.status(400).json({ code: 8, message: "User not in group" });
                 }
 
-                // Add group to user
-                user.groups.push(groupId);
+                // Remove user from group
+                user.groups.pull(groupId);
                 user.save();
 
-                // Add user to group
-                Group.findById(groupId)
+                // Remove user from group
+                Group.findByIdAndUpdate(groupId, { $pull: { users: userId } })
                     .then(group => {
-                        group.users.push(userId);
-                        group.save();
-
-                        return res.status(200).json({ code: 200, message: "User added to group" });
+                        return res.status(200).json({ code: 200, message: "User removed from group" });
                     })
                     .catch(error => {
                         return res.status(500).json({ code: 500, message: "Internal Server Error" });
                     });
-
             })
-            .catch(error => {
-                console.log(error);
-                return res.status(500).json({ code: 500, message: "Internal Server Error" });
-            });
     },
 
     // PUT
     updateUser: async (req, res) => {
         const userId = req.user._id;
-        const { name, email, password, avatar, userName } = req.body;
+        const { name, email, prevPassword, newPassword, avatar, userName } = req.body;
 
-        // Check if user exists
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ code: 404, message: "User not found" });
-        }
+        User.findById(userId)
+            .then(async user => {
+                user.name = name || user.name;
+                user.email = email || user.email;
+                user.avatar = avatar || user.avatar;
+                user.userName = userName || user.userName;
 
-        // Check if email already exists
-        const userWithEmail = email ? await User.findOne({ email }) : null;
-        if (userWithEmail && userWithEmail._id != userId) {
-            return res.status(400).json({ code: 5, message: "Email already exists" });
-        }
+                // Check if password is changed
+                if (prevPassword && newPassword && await bcrypt.compare(prevPassword, user.password)) {
+                    const salt = await bcrypt.genSalt();
+                    const hashPassword = await bcrypt.hash(newPassword, salt);
+                    user.password = hashPassword;
+                }
 
-        // Check if userName already exists
-        const userWithUserName = userName ? await User.findOne({ userName }) : null;
-        if (userWithUserName && userWithUserName._id != userId) {
-            return res.status(400).json({ code: 4, message: "User already exists" });
-        }
-
-        // Update user
-        try {
-            await User.findByIdAndUpdate(userId, { name, email, password, avatar, userName });
-            return res.status(200).json({ code: 200, message: "User updated" });
-        } catch (error) {
-            console.log(error);
-            return res.status(500).json({ code: 500, message: "Internal Server Error" });
-        }
+                user.save()
+                    .then(() => {
+                        return res.status(200).json({ code: 200, message: "User updated" });
+                    })
+                    .catch(error => {
+                        return res.status(500).json({ code: 500, message: "Internal Server Error" });
+                    });
+            })
+            .catch(error => {
+                return res.status(500).json({ code: 500, message: "Internal Server Error" });
+            });
     },
 
     // DELETE
