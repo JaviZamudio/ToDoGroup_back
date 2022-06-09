@@ -1,5 +1,6 @@
 const { generateInviteCode } = require("../functions/functions");
 const { Group } = require("../Models/Group");
+const { Task } = require("../Models/Task");
 const { User } = require("../models/User");
 
 const groupsControl = {
