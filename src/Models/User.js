@@ -26,7 +26,17 @@ const userSchema = new Schema({
     date: {
         type: Date,
         default: Date.now
-    }
+    },
+    groups: [{
+        type: Schema.Types.ObjectId,
+        ref: "Group",
+        default: []
+    }],
+    tasks: [{
+        type: Schema.Types.ObjectId,
+        ref: "Task",
+        default: []
+    }]
 });
 
 const User = model("User", userSchema);

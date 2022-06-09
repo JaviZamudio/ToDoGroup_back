@@ -22,7 +22,6 @@ const taskSchema = Schema({
     group: {
         type: Schema.Types.ObjectId,
         ref: "Group",
-        required: false
     },
     users: [{
         type: Schema.Types.ObjectId,
