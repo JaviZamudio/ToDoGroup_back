@@ -8,11 +8,11 @@ const taskSchema = Schema({
     },
     description: {
         type: String,
-        required: false
+        required: false,
     },
-    completed: {
-        type: Boolean,
-        default: false
+    status: {
+        type: String,
+        default: "todo",
     },
     creator: {
         type: Schema.Types.ObjectId,
