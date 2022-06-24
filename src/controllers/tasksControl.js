@@ -125,9 +125,9 @@ const tasksControl = {
 
         // Get task
         Task.findById(taskId)
-            .then(task => {
+            .then(async task => {
                 // Check if task is created by user 
-                if (task.creator.toString() !== userId && !task.users.includes(userId) && await Group.findById(task.group).admins.includes(userId)) {
+                if (task.creator.toString() !== userId && !task.users.includes(userId) && !(await Group.findById(task.group)).admins.includes(userId)) {
                     return res.status(400).json({ code: 400, message: "Task not created by user or not in user's tasks" });
                 }
 

@@ -8,7 +8,7 @@ const { Group } = require("../Models/Group");
 /* 
     Status codes:
     200: OK
-    201: Created
+    200: Created
     400: Bad Request
     401: Unauthorized
     404: Not Found
@@ -72,7 +72,8 @@ const usersControl = {
     // POST
     register: async (req, res) => {
         // get fields from body
-        const { name, email, password, avatar, userName } = req.body;
+        const { name, email, password, avatar } = req.body;
+        const userName = req.body.userName.toLowerCase();
 
         // validate fields
         if (!name || !email || !password || !userName) {
@@ -88,7 +89,7 @@ const usersControl = {
         // check if email already exists
         const userEmail = await User.findOne({ email });
         if (userEmail) {
-            return res.status(400).json({ code: 5, message: "Email already exists" });
+            return res.status(400).json({ code: 5, message: "There's another user with this email" });
         }
 
         // hash password
@@ -98,7 +99,8 @@ const usersControl = {
         // Create new user
         try {
             const user = await User.create({ name, email, password: hashPassword, avatar, userName });
-            return res.status(201).json({ code: 201, message: "User created", data: user });
+            const token = jwt.sign({ _id: user._id, name: user.name }, JWT.SECRET);
+            return res.status(200).json({ code: 200, message: "User created", data: {user, token} });
         } catch (error) {
             console.log(error);
             return res.status(500).json({ code: 500, message: "Internal Server Error" });
@@ -108,15 +110,17 @@ const usersControl = {
 
     login: async (req, res) => {
         // Get user from request
-        const { userName, password } = req.body;
+        const { password } = req.body;
+        const userName = req.body.userName.toLowerCase();
 
         // Check if fields are complete
         if (!userName || !password) {
+            console.log(req.body);
             return res.status(400).json({ code: 1, message: "Fields missing" });
         }
 
-        // Get user by userName
         try {
+            // Get user by userName
             const user = await User.findOne({ userName });
 
             if (!user) {
